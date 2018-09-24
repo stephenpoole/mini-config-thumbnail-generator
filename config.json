@@ -1,13 +1,14 @@
 {
+    "port": 3000,
     "fileUpdateIntervalMinutes": 0.5,
     "filetypes": ["jpg", "jpeg", "png", "gif"],
-    "queueSize": 3,
+    "queueSize": 5,
     "ignoreImagesBelowPx": 80,
     "target": {
         "tenantId": "MossoCloudFS_929250",
         "cloudFilesId": "iad3",
         "containerId": "MINIStaging",
-        "path": "Public/img/_config-testing/v",
-        "destinationPath": "Public/img/_config-testing/v_m"
+        "path": "Public/img/_config-testing/v/",
+        "destinationPath": "Public/img/_config-testing/v_m/"
     }
 }

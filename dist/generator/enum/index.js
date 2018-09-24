@@ -12,3 +12,12 @@ Object.defineProperty(exports, 'FileStatus', {
     return _fileStatus.FileStatus;
   }
 });
+
+var _event = require('./event');
+
+Object.defineProperty(exports, 'Event', {
+  enumerable: true,
+  get: function () {
+    return _event.Event;
+  }
+});

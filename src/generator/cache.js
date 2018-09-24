@@ -1,6 +1,20 @@
 export class Cache {
     constructor() {
-        this.cache = new Map();
+        this.hydrate();
+    }
+
+    hydrate(data) {
+        if (!data) {
+            this.cache = new Map();
+            return;
+        }
+
+        try {
+            this.cache = new Map(JSON.parse(data));
+        } catch (error) {
+            console.error(error);
+            this.cache = new Map();
+        }
     }
 
     has(file) {
@@ -10,7 +24,7 @@ export class Cache {
     isDirty(file) {
         if (this.has(file)) {
             const currentFile = this.get(file);
-            return file.last_modified.isAfter(currentFile.last_modified);
+            return file.hash !== currentFile.hash;
         } else {
             return true;
         }
@@ -26,6 +40,10 @@ export class Cache {
 
     remove(file) {
         this.cache.delete(file.hash);
+    }
+
+    getAll() {
+        return this.cache;
     }
 
     get size() {

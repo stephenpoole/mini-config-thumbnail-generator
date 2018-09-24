@@ -1,0 +1,177 @@
+<html>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        font-size: 100%;
+        font: inherit;
+        vertical-align: baseline;
+    }
+
+    /* HTML5 display-role reset for older browsers */
+    article,
+    aside,
+    details,
+    figcaption,
+    figure,
+    footer,
+    header,
+    hgroup,
+    menu,
+    nav,
+    section {
+        display: block;
+    }
+
+    body {
+        line-height: 1;
+    }
+
+    ol,
+    ul {
+        list-style: none;
+    }
+
+    blockquote,
+    q {
+        quotes: none;
+    }
+
+    blockquote:before,
+    blockquote:after,
+    q:before,
+    q:after {
+        content: '';
+        content: none;
+    }
+
+    table {
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+
+    html,
+    body {
+        font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    }
+
+    .queued {
+        font-size: 1.5em;
+    }
+
+    .content {
+        padding: 15px;
+    }
+
+    .log {
+        margin-top: 10px;
+    }
+
+    .log .path {
+        margin-right: 10px;
+    }
+
+    .connect {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 20px
+    }
+
+    .connect.on {
+        background: #1fad4d;
+    }
+
+    .connect.off {
+        background: #ad291f
+    }
+</style>
+
+<body>
+    <div class="content">
+        <div class="connect off"></div>
+        <h2 class="queued"></h2>
+        <ul class="log"></ul>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var socket = io.connect('http://127.0.0.1:3000', {
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            reconnectionAttempts: Infinity
+        });
+
+        var $elements = {
+            queued: $('.queued'),
+            connect: $('.connect'),
+            log: $('.log'),
+            logItems: {}
+        }
+        var events = {
+            FILE_UPDATE: 1,
+            QUEUE_COUNT: 2
+        }
+
+        socket.on('connect', function () {
+            $elements.connect.removeClass('off').addClass('on')
+        })
+
+        socket.on('disconnect', function () {
+            $elements.connect.addClass('off').removeClass('on')
+            $elements.log.html("")
+        })
+
+        socket.on(events.QUEUE_COUNT, function (count) {
+            $elements.queued.html(count)
+        });
+
+        socket.on(events.FILE_UPDATE, function (message) {
+            var status = message.status,
+                file = message.file;
+
+            if (status === 5) {
+                if (file.hash in $elements.logItems) {
+                    $elements.logItems[file.hash].remove()
+
+                }
+                return
+            }
+
+            if (file.hash in $elements.logItems) {
+                $elements.logItems[file.hash].html(logElement(file))
+            } else {
+                var element = logElement(file)
+                $elements.log.append(element)
+                $elements.logItems[file.hash] = element
+            }
+        });
+
+        function logElement(obj) {
+            return $('<li class=' + obj.hash + '><span class="path">' + obj.uniquePath + '</span><span class="status">' + getStatus(obj.status) + '</span></li>')
+        }
+
+        function getStatus(status) {
+            switch (status) {
+                case 0:
+                    return 'Idle'
+                case 1:
+                    return 'Queued'
+                case 2:
+                    return 'Downloading'
+                case 3:
+                    return 'Compressing'
+                case 4:
+                    return 'Uploading'
+                case 5:
+                    return 'Complete'
+            }
+        }
+    </script>
+</body>
+
+</html>

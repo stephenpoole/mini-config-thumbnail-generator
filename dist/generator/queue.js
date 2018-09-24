@@ -55,7 +55,7 @@ class Queue extends _cache.Cache {
     }
 
     get space() {
-        return this.concurrency === -1 ? Number.MAX_SAFE_INTEGER - this.size : this.concurrency - this.size;
+        return this.concurrency === -1 ? Number.MAX_SAFE_INTEGER - this.size : Math.abs(this.concurrency - this.size);
     }
 }
 exports.Queue = Queue;

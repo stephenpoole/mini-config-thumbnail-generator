@@ -1,12 +1,10 @@
 import { FileStatus } from './enum';
 
-const moment = require('moment');
-
 export class File {
     constructor(basePath, metadata) {
         this.status = FileStatus.IDLE;
         this.hash = metadata.hash;
-        this.last_modified = moment(metadata.last_modified);
+        this.last_modified = metadata.last_modified;
         this.bytes = metadata.bytes;
         this.path = metadata.name;
         this.filetype = this.getFiletype(this.path);

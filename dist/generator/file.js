@@ -7,13 +7,11 @@ exports.File = undefined;
 
 var _enum = require('./enum');
 
-const moment = require('moment');
-
 class File {
     constructor(basePath, metadata) {
         this.status = _enum.FileStatus.IDLE;
         this.hash = metadata.hash;
-        this.last_modified = moment(metadata.last_modified);
+        this.last_modified = metadata.last_modified;
         this.bytes = metadata.bytes;
         this.path = metadata.name;
         this.filetype = this.getFiletype(this.path);
