@@ -2,6 +2,7 @@ const fs = require('fs'),
     path = require('path'),
     EventEmitter = require('events');
 
+import { Zlib } from './util/zlib';
 import { OnExit } from './util/onExit';
 
 export class Storage extends EventEmitter {
@@ -22,8 +23,9 @@ export class Storage extends EventEmitter {
 
     async initialize() {
         try {
-            const data = await this.load();
-            this.state = data;
+            const buffer = await this.load();
+            const data = await Zlib.gunzip(buffer);
+            this.state = JSON.parse(data);
         } catch (error) {
             console.error(error);
         } finally {
@@ -41,7 +43,8 @@ export class Storage extends EventEmitter {
         this.saving = true;
 
         try {
-            this.saveRef = await this.save();
+            const buffer = await Zlib.gzip(JSON.stringify(this.state));
+            this.saveRef = await this.save(buffer);
         } catch (error) {
             console.error(error);
         } finally {
@@ -77,8 +80,7 @@ export class Storage extends EventEmitter {
                     reject(!!error ? error : 'Data was empty');
                 } else {
                     try {
-                        const json = JSON.parse(data);
-                        resolve(json);
+                        resolve(data);
                     } catch (error) {
                         reject(error);
                     }
@@ -87,23 +89,19 @@ export class Storage extends EventEmitter {
         });
     }
 
-    save() {
+    save(data) {
         if (!!this.saveRef) {
             return this.saveRef;
         }
 
         return new Promise((resolve, reject) => {
-            fs.writeFile(
-                path.resolve(__dirname, this.fileName),
-                JSON.stringify(this.state),
-                error => {
-                    if (!!error) {
-                        reject(error);
-                    } else {
-                        resolve();
-                    }
+            fs.writeFile(path.resolve(__dirname, this.fileName), data, error => {
+                if (!!error) {
+                    reject(error);
+                } else {
+                    resolve();
                 }
-            );
+            });
         });
     }
 }

@@ -5,6 +5,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.Storage = undefined;
 
+var _zlib = require('./util/zlib');
+
 var _onExit = require('./util/onExit');
 
 const fs = require('fs'),
@@ -29,8 +31,9 @@ class Storage extends EventEmitter {
 
     async initialize() {
         try {
-            const data = await this.load();
-            this.state = data;
+            const buffer = await this.load();
+            const data = await _zlib.Zlib.gunzip(buffer);
+            this.state = JSON.parse(data);
         } catch (error) {
             console.error(error);
         } finally {
@@ -48,7 +51,8 @@ class Storage extends EventEmitter {
         this.saving = true;
 
         try {
-            this.saveRef = await this.save();
+            const buffer = await _zlib.Zlib.gzip(JSON.stringify(this.state));
+            this.saveRef = await this.save(buffer);
         } catch (error) {
             console.error(error);
         } finally {
@@ -84,8 +88,7 @@ class Storage extends EventEmitter {
                     reject(!!error ? error : 'Data was empty');
                 } else {
                     try {
-                        const json = JSON.parse(data);
-                        resolve(json);
+                        resolve(data);
                     } catch (error) {
                         reject(error);
                     }
@@ -94,13 +97,13 @@ class Storage extends EventEmitter {
         });
     }
 
-    save() {
+    save(data) {
         if (!!this.saveRef) {
             return this.saveRef;
         }
 
         return new Promise((resolve, reject) => {
-            fs.writeFile(path.resolve(__dirname, this.fileName), JSON.stringify(this.state), error => {
+            fs.writeFile(path.resolve(__dirname, this.fileName), data, error => {
                 if (!!error) {
                     reject(error);
                 } else {
