@@ -2,7 +2,7 @@
     "port": 3000,
     "fileUpdateIntervalMinutes": 0.5,
     "filetypes": ["jpg", "jpeg", "png", "gif"],
-    "queueSize": 5,
+    "queueSize": 10,
     "ignoreImagesBelowPx": 80,
     "target": {
         "tenantId": "MossoCloudFS_929250",

@@ -66,10 +66,23 @@
 
     .log {
         margin-top: 10px;
+        height: 250px;
     }
 
-    .log .path {
-        margin-right: 10px;
+    .errors-container {
+        height: 500px;
+        overflow-y: scroll;
+        margin-top: 10px;
+        position: absolute;
+        bottom: 35px;
+        left: 15px;
+        width: 100%;
+        display: none;
+    }
+
+    .log li>*,
+    .errors li>* {
+        margin-right: 20px;
     }
 
     .connect {
@@ -94,6 +107,10 @@
         <div class="connect off"></div>
         <h2 class="queued"></h2>
         <ul class="log"></ul>
+        <div class="errors-container">
+            <h3>Errors</h3>
+            <ul class="errors"></ul>
+        </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
@@ -110,11 +127,15 @@
             queued: $('.queued'),
             connect: $('.connect'),
             log: $('.log'),
-            logItems: {}
+            logItems: {},
+            errors: $('.errors'),
+            errorsItems: {},
+            errorsContainer: $('.errors-container')
         }
         var events = {
             FILE_UPDATE: 1,
-            QUEUE_COUNT: 2
+            QUEUE_COUNT: 2,
+            ERROR: 3
         }
 
         socket.on('connect', function () {
@@ -124,10 +145,16 @@
         socket.on('disconnect', function () {
             $elements.connect.addClass('off').removeClass('on')
             $elements.log.html("")
+            $elements.logItems = {}
         })
 
-        socket.on(events.QUEUE_COUNT, function (count) {
-            $elements.queued.html(count)
+        var count = 0
+        socket.on(events.QUEUE_COUNT, function (currentCount) {
+            if (currentCount === count) {
+                return;
+            }
+            $elements.queued.html(currentCount)
+            currentCount = count
         });
 
         socket.on(events.FILE_UPDATE, function (message) {
@@ -137,7 +164,6 @@
             if (status === 5) {
                 if (file.hash in $elements.logItems) {
                     $elements.logItems[file.hash].remove()
-
                 }
                 return
             }
@@ -151,8 +177,49 @@
             }
         });
 
-        function logElement(obj) {
-            return $('<li class=' + obj.hash + '><span class="path">' + obj.uniquePath + '</span><span class="status">' + getStatus(obj.status) + '</span></li>')
+        var errors = []
+        socket.on(events.ERROR, function (message) {
+            if (!message.length) {
+                return;
+            }
+
+            if (!$elements.errorsContainer.hasClass('show')) {
+                $elements.errorsContainer.css('display', 'block').addClass('show');
+            }
+
+            for (var index = 0; index < message.length; index++) {
+                var obj = message[index],
+                    error = obj.error,
+                    file = obj.file;
+
+                if (!(obj.md5 in $elements.errorsItems)) {
+                    if (errors.length === 30) {
+                        var error = errors[errors.length - 1]
+                        $('.errors .' + error.md5).remove()
+                        delete $elements.errorsItems[error.md5]
+                    }
+
+                    errors.push(obj)
+                    errors = sortArrayByKey(errors, 'date')
+                    var element = errorsElement(obj)
+                    $elements.errors.prepend(element)
+                    $elements.errorsItems[obj.md5] = obj
+                }
+            }
+        })
+
+        function logElement(file) {
+            return $('<li class=' + file.hash + '><span class="path">' + file.uniquePath + '</span><span class="status">' + getStatus(file.status) + '</span></li>')
+        }
+
+        function errorsElement(item) {
+            return $('<li class=' + item.md5 + '><span class="date">' + moment(item.date).format('MMM D, h:mm:ssa') + '</span><span class="path">' + item.file.uniquePath + '</span><span class="message">' + item.error + '</span></li>')
+        }
+
+        function sortArrayByKey(arr, key) {
+            return arr.sort(function (a, b) {
+                return a[key] < b[key]
+            })
         }
 
         function getStatus(status) {

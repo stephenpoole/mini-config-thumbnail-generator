@@ -31,9 +31,17 @@ class Server {
 
         generator.on(_enum.Event.FILE_UPDATE, this.onFileUpdate.bind(this));
         generator.on(_enum.Event.QUEUE_COUNT, this.onQueueCount.bind(this));
+        generator.on(_enum.Event.ERROR, this.onError.bind(this));
+        this.generator = generator;
     }
 
-    connect(socket) {}
+    connect(socket) {
+        this.onError(this.generator.getErrors());
+    }
+
+    onError(errors) {
+        this.send(_enum.Event.ERROR, errors);
+    }
 
     onFileUpdate(status, file) {
         this.send(_enum.Event.FILE_UPDATE, {

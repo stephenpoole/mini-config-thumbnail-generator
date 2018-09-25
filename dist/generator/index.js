@@ -15,6 +15,8 @@ var _cache = require('./cache');
 
 var _queue = require('./queue');
 
+var _fileQueue = require('./fileQueue');
+
 var _storage = require('./storage');
 
 var _stats = require('./stats');
@@ -47,8 +49,12 @@ class ThumbGenerator extends EventEmitter {
 
         this.cache = new _cache.Cache();
         this.queue = {
-            idle: new _queue.Queue(),
-            active: new _queue.Queue({ concurrency: config.queueSize })
+            idle: new _fileQueue.FileQueue(),
+            active: new _fileQueue.FileQueue({ concurrency: config.queueSize }),
+            errors: new _queue.Queue({
+                concurrency: 30,
+                rotating: true
+            })
         };
         this.intervals = {
             tick: setInterval(this.tick.bind(this), 100),
@@ -66,7 +72,7 @@ class ThumbGenerator extends EventEmitter {
 
     onStorageReady() {
         const { storage, cache } = this;
-        const { idle } = this.queue;
+        const { idle, errors } = this.queue;
         const hash = storage.get('hash'),
               currentHash = md5(this.config.target);
 
@@ -82,6 +88,9 @@ class ThumbGenerator extends EventEmitter {
                 }
             }
         }
+
+        const errorData = storage.get('errors');
+        errors.hydrate(errorData);
         storage.set('hash', currentHash);
 
         if (++this.readyCount === 2) {
@@ -123,18 +132,16 @@ class ThumbGenerator extends EventEmitter {
             active.add(item);
         }
 
-        for (let [key, file] of active.cache) {
+        for (let file of active.getAll()) {
             if (file.status === _enum.FileStatus.QUEUED) {
                 this.compressQueuedImage(file);
             }
         }
-
-        this.emit(_enum.Event.QUEUE_COUNT, idle.size + active.size);
     }
 
     async compressQueuedImage(file) {
-        const { rackspace, cache } = this;
-        const { active } = this.queue;
+        const { rackspace, cache, storage } = this;
+        const { active, idle } = this.queue;
         const { tenantId, cloudFilesId, containerId, destinationPath } = this.config.target;
         try {
             file.status = _enum.FileStatus.DOWNLOADING;
@@ -149,16 +156,18 @@ class ThumbGenerator extends EventEmitter {
             this.emit(_enum.Event.FILE_UPDATE, file.status, file);
             const response = await rackspace.uploadFile(tenantId, cloudFilesId, containerId, destinationPath + file.uniquePath, resizedImage);
 
-            active.remove(file);
-            file.status = _enum.FileStatus.COMPLETE;
-            // console.log(this.cache.get(file).path);
-
             if (String(response.statusCode).charAt(0) !== '2') {
                 cache.remove(file.hash); // if the request failed, invalidate the cache so it gets reprocessed on next tick
             }
-            this.emit(_enum.Event.FILE_UPDATE, file.status, file);
         } catch (error) {
             console.error(error);
+            cache.remove(file.hash);
+            this.addError(file, error);
+        } finally {
+            active.remove(file);
+            file.status = _enum.FileStatus.COMPLETE;
+            this.emit(_enum.Event.FILE_UPDATE, file.status, file);
+            this.emit(_enum.Event.QUEUE_COUNT, idle.size + active.size);
         }
     }
 
@@ -206,6 +215,7 @@ class ThumbGenerator extends EventEmitter {
             this.storage.set('cache', JSON.stringify([...this.cache.getAll()])); // convert map to json for storage
         } catch (error) {
             console.error(error);
+            this.addError(undefined, error);
         }
     }
 
@@ -229,6 +239,25 @@ class ThumbGenerator extends EventEmitter {
         } catch (error) {
             return Promise.reject(error);
         }
+    }
+
+    addError(file, error) {
+        const { errors } = this.queue,
+              errorModel = this.generateError(file, error);
+
+        errors.add(errorModel);
+        this.storage.set('errors', errors.getAll());
+        this.emit(_enum.Event.ERROR, [errorModel]);
+    }
+
+    generateError(file, error) {
+        let obj = { file, error: error.message, date: new Date().getTime() };
+        obj.md5 = md5(JSON.stringify(obj));
+        return obj;
+    }
+
+    getErrors() {
+        return this.queue.errors.getAll();
     }
 }
 exports.ThumbGenerator = ThumbGenerator;
