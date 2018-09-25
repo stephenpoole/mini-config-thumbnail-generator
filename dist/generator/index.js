@@ -155,9 +155,8 @@ class ThumbGenerator extends EventEmitter {
 
             if (String(response.statusCode).charAt(0) !== '2') {
                 cache.remove(file.hash); // if the request failed, invalidate the cache so it gets reprocessed on next tick
-            } else {
-                this.emit(_enum.Event.FILE_UPDATE, file.status, file);
             }
+            this.emit(_enum.Event.FILE_UPDATE, file.status, file);
         } catch (error) {
             console.error(error);
         }
@@ -224,7 +223,8 @@ class ThumbGenerator extends EventEmitter {
             if (!containerExists) {
                 throw new Error(`${containerId} not found in container list`);
             }
-            const files = await rackspace.getFiles(tenantId, cloudFilesId, containerId, path);
+            const files = await rackspace.getAllFiles(tenantId, cloudFilesId, containerId, path);
+
             return Promise.resolve(files);
         } catch (error) {
             return Promise.reject(error);

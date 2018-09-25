@@ -4,6 +4,7 @@ const fs = require('fs'),
 
 import { Zlib } from './util/zlib';
 import { OnExit } from './util/onExit';
+import { Env } from './util/env';
 
 export class Storage extends EventEmitter {
     constructor() {
@@ -24,7 +25,11 @@ export class Storage extends EventEmitter {
     async initialize() {
         try {
             const buffer = await this.load();
-            const data = await Zlib.gunzip(buffer);
+            let data = buffer;
+
+            if (Env.isProduction()) {
+                data = await Zlib.gunzip(buffer);
+            }
             this.state = JSON.parse(data);
         } catch (error) {
             console.error(error);
@@ -43,7 +48,12 @@ export class Storage extends EventEmitter {
         this.saving = true;
 
         try {
-            const buffer = await Zlib.gzip(JSON.stringify(this.state));
+            const data = JSON.stringify(this.state);
+            let buffer = data;
+
+            if (Env.isProduction()) {
+                buffer = await Zlib.gzip(buffer);
+            }
             this.saveRef = await this.save(buffer);
         } catch (error) {
             console.error(error);

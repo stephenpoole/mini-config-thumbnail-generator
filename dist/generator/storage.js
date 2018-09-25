@@ -9,6 +9,8 @@ var _zlib = require('./util/zlib');
 
 var _onExit = require('./util/onExit');
 
+var _env = require('./util/env');
+
 const fs = require('fs'),
       path = require('path'),
       EventEmitter = require('events');
@@ -32,7 +34,11 @@ class Storage extends EventEmitter {
     async initialize() {
         try {
             const buffer = await this.load();
-            const data = await _zlib.Zlib.gunzip(buffer);
+            let data = buffer;
+
+            if (_env.Env.isProduction()) {
+                data = await _zlib.Zlib.gunzip(buffer);
+            }
             this.state = JSON.parse(data);
         } catch (error) {
             console.error(error);
@@ -51,7 +57,12 @@ class Storage extends EventEmitter {
         this.saving = true;
 
         try {
-            const buffer = await _zlib.Zlib.gzip(JSON.stringify(this.state));
+            const data = JSON.stringify(this.state);
+            let buffer = data;
+
+            if (_env.Env.isProduction()) {
+                buffer = await _zlib.Zlib.gzip(buffer);
+            }
             this.saveRef = await this.save(buffer);
         } catch (error) {
             console.error(error);

@@ -43,14 +43,42 @@ export class Rackspace extends EventEmitter {
         });
     }
 
-    getFiles(tenantId, fileServerId, containerId, path, limit) {
+    getFiles(tenantId, fileServerId, containerId, path, marker) {
         return this.request('', {
             uri: `https://storage101.${fileServerId}.clouddrive.com/v1/${tenantId}/${containerId}`,
             qs: {
                 prefix: path,
-                limit
+                marker
             }
         });
+    }
+
+    async getAllFiles(tenantId, fileServerId, containerId, path) {
+        let files = [],
+            marker;
+
+        try {
+            while (true) {
+                const result = await this.getFiles(
+                    tenantId,
+                    fileServerId,
+                    containerId,
+                    path,
+                    marker
+                );
+                marker = result[result.length - 1].name;
+                files = files.concat(result);
+
+                // request limit
+                if (result.length !== 10000) {
+                    break;
+                }
+            }
+
+            return Promise.resolve(files);
+        } catch (error) {
+            return Promise.reject(error);
+        }
     }
 
     downloadFile(tenantId, fileServerId, containerId, path) {
