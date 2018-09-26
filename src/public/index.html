@@ -213,7 +213,7 @@
         }
 
         function errorsElement(item) {
-            return $('<li class=' + item.md5 + '><span class="date">' + moment(item.date).format('MMM D, h:mm:ssa') + '</span><span class="path">' + item.file.uniquePath + '</span><span class="message">' + item.error + '</span></li>')
+            return $('<li class=' + item.md5 + '><span class="date">' + moment(item.date).format('MMM D, h:mm:ssa') + '</span><span class="path">' + ('file' in item ? item.file.uniquePath : '') + '</span><span class="message">' + item.error + '</span></li>')
         }
 
         function sortArrayByKey(arr, key) {

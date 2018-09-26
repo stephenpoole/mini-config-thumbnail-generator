@@ -7,8 +7,14 @@ The server looks for a configuration file named `credentials.json` which should 
 
 ```
 {
-    "username": ...,
-    "apiKey": ...
+    "rackspace": {
+        "username": ...,
+        "apiKey": ...
+    },
+    "mailgun": {
+        "domain": ...,
+        "apiKey": ...
+    }
 }
 ```
 

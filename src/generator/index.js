@@ -1,4 +1,4 @@
-import { Rackspace } from './rackspace';
+import { Rackspace, Mailgun } from './services';
 import { FileStatus, Event } from './enum';
 import { File } from './file';
 import { Cache } from './cache';
@@ -22,9 +22,12 @@ export class ThumbGenerator extends EventEmitter {
         this.catalog;
         this.readyCount = 0;
 
-        const rackspace = new Rackspace(credentials);
+        const rackspace = new Rackspace(credentials.rackspace);
         rackspace.on('token', this.onToken.bind(this));
         this.rackspace = rackspace;
+
+        const mailgun = new Mailgun(credentials.mailgun);
+        this.mailgun = mailgun;
 
         const storage = new Storage();
         storage.on('ready', this.onStorageReady.bind(this));
@@ -255,6 +258,7 @@ export class ThumbGenerator extends EventEmitter {
         errors.add(errorModel);
         this.storage.set('errors', errors.getAll());
         this.emit(Event.ERROR, [errorModel]);
+        this.mailgun.sendError(file, error);
     }
 
     generateError(file, error) {

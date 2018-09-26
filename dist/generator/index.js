@@ -5,7 +5,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.ThumbGenerator = undefined;
 
-var _rackspace = require('./rackspace');
+var _services = require('./services');
 
 var _enum = require('./enum');
 
@@ -36,9 +36,12 @@ class ThumbGenerator extends EventEmitter {
         this.catalog;
         this.readyCount = 0;
 
-        const rackspace = new _rackspace.Rackspace(credentials);
+        const rackspace = new _services.Rackspace(credentials.rackspace);
         rackspace.on('token', this.onToken.bind(this));
         this.rackspace = rackspace;
+
+        const mailgun = new _services.Mailgun(credentials.mailgun);
+        this.mailgun = mailgun;
 
         const storage = new _storage.Storage();
         storage.on('ready', this.onStorageReady.bind(this));
@@ -248,6 +251,7 @@ class ThumbGenerator extends EventEmitter {
         errors.add(errorModel);
         this.storage.set('errors', errors.getAll());
         this.emit(_enum.Event.ERROR, [errorModel]);
+        this.mailgun.sendError(file, error);
     }
 
     generateError(file, error) {

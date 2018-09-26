@@ -3,31 +3,16 @@
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-const zlib = require('zlib');
+const zlib = require('zlib'),
+      util = require('util');
 
 class Zlib {
     static gzip(buffer) {
-        return new Promise((resolve, reject) => {
-            zlib.gzip(buffer, (error, data) => {
-                if (!!error) {
-                    reject(error);
-                } else {
-                    resolve(data);
-                }
-            });
-        });
+        return util.promisify(zlib.gzip)(buffer);
     }
 
     static gunzip(buffer) {
-        return new Promise((resolve, reject) => {
-            zlib.gunzip(buffer, (error, data) => {
-                if (!!error) {
-                    reject(error);
-                } else {
-                    resolve(data);
-                }
-            });
-        });
+        return util.promisify(zlib.gunzip)(buffer);
     }
 }
 exports.Zlib = Zlib;
